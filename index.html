@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Robotics Learning App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+    }
+
+    header {
+      background: #2563eb;
+      color: white;
+      padding: 16px;
+      font-size: 20px;
+    }
+
+    nav button {
+      margin-right: 10px;
+      padding: 8px 12px;
+      border: none;
+      background: white;
+      color: #2563eb;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    main {
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  Robotics Learning App
+  <nav>
+    <button onclick="showPage('home')">Home</button>
+    <button onclick="showPage('learn')">Learn</button>
+    <button onclick="showPage('simulator')">Simulator</button>
+  </nav>
+</header>
+
+<main id="content"></main>
+
+<script>
+  function showPage(page) {
+    const content = document.getElementById("content");
+
+    if (page === "home") {
+      content.innerHTML = `
+        <div class="card">
+          <h2>Welcome 👋</h2>
+          <p>Learn robotics step by step.</p>
+        </div>
+      `;
+    }
+
+    if (page === "learn") {
+      content.innerHTML = `
+        <div class="card">
+          <h2>Lesson 1: What is a Robot?</h2>
+          <p>A robot is a machine that can sense, think, and act.</p>
+        </div>
+      `;
+    }
+
+    if (page === "simulator") {
+      content.innerHTML = `
+        <div class="card">
+          <h2>Robot Simulator</h2>
+          <p>Simulator coming soon 🤖</p>
+        </div>
+      `;
+    }
+  }
+
+  // Load home page by default
+  showPage("home");
+</script>
+
+</body>
+</html>
