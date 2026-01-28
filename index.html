@@ -39,6 +39,41 @@
       padding: 16px;
       border-radius: 8px;
       margin-bottom: 16px;
+      .robot {
+  width: 60px;
+  height: 60px;
+  background: #f97316;
+  border-radius: 10px;
+  position: relative;
+  animation: moveRobot 3s infinite alternate;
+}
+
+.eye {
+  width: 8px;
+  height: 8px;
+  background: black;
+  border-radius: 50%;
+  position: absolute;
+  top: 15px;
+}
+
+.eye.left {
+  left: 15px;
+}
+
+.eye.right {
+  right: 15px;
+}
+
+@keyframes moveRobot {
+  from {
+    left: 0;
+  }
+  to {
+    left: 200px;
+  }
+}
+
     }
   </style>
 </head>
@@ -96,14 +131,22 @@
       `;
     }
 
-    if (page === "simulator") {
-      content.innerHTML = `
-        <div class="card">
-          <h2>Robot Simulator 🤖</h2>
-          <p>Coming next!</p>
+   if (page === "simulator") {
+  content.innerHTML = `
+    <div class="card">
+      <h2>Robot Simulator 🤖</h2>
+      <p>This is your first robot!</p>
+
+      <div style="position: relative; height: 100px; margin-top: 20px;">
+        <div class="robot">
+          <div class="eye left"></div>
+          <div class="eye right"></div>
         </div>
-      `;
-    }
+      </div>
+    </div>
+  `;
+}
+
   }
 
   function showQuiz() {
