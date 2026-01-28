@@ -75,6 +75,22 @@
 }
 
     }
+    .robot-container {
+  position: relative;
+  height: 120px;
+  margin-top: 20px;
+}
+
+.robot {
+  width: 60px;
+  height: 60px;
+  background: #f97316;
+  border-radius: 10px;
+  position: absolute;
+  left: 0;
+  transition: left 0.5s;
+}
+
   </style>
 </head>
 
@@ -112,6 +128,33 @@
           <p><strong>Lesson 1:</strong> ${completed ? "✅ Completed" : "❌ Not completed"}</p>
         </div>
       `;
+      let position = 0;
+let moving;
+
+function moveRobot(direction) {
+  const robot = document.getElementById("robot");
+
+  clearInterval(moving);
+
+  if (direction === "left") {
+    moving = setInterval(() => {
+      position = Math.max(0, position - 10);
+      robot.style.left = position + "px";
+    }, 300);
+  }
+
+  if (direction === "right") {
+    moving = setInterval(() => {
+      position = Math.min(200, position + 10);
+      robot.style.left = position + "px";
+    }, 300);
+  }
+
+  if (direction === "stop") {
+    clearInterval(moving);
+  }
+}
+
     }
 
     if (page === "learn") {
@@ -130,25 +173,27 @@
         </div>
       `;
     }
-
-   if (page === "simulator") {
+  if (page === "simulator") {
   content.innerHTML = `
     <div class="card">
       <h2>Robot Simulator 🤖</h2>
-      <p>This is your first robot!</p>
+      <p>Control the robot like a real one.</p>
 
-      <div style="position: relative; height: 100px; margin-top: 20px;">
-        <div class="robot">
+      <div class="robot-container">
+        <div id="robot" class="robot">
           <div class="eye left"></div>
           <div class="eye right"></div>
         </div>
       </div>
+
+      <br>
+
+      <button onclick="moveRobot('left')">⬅️ Left</button>
+      <button onclick="moveRobot('right')">➡️ Right</button>
+      <button onclick="moveRobot('stop')">⏹ Stop</button>
     </div>
   `;
 }
-
-  }
-
   function showQuiz() {
     content.innerHTML = `
       <div class="card">
