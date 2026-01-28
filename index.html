@@ -57,14 +57,24 @@
 <main id="content"></main>
 
 <script>
-  function showPage(page) {
-    const content = document.getElementById("content");
+  const content = document.getElementById("content");
 
+  function saveProgress(key, value) {
+    localStorage.setItem(key, value);
+  }
+
+  function getProgress(key) {
+    return localStorage.getItem(key);
+  }
+
+  function showPage(page) {
     if (page === "home") {
+      const completed = getProgress("lesson1") === "done";
       content.innerHTML = `
         <div class="card">
           <h2>Welcome 👋</h2>
           <p>Learn robotics step by step.</p>
+          <p><strong>Lesson 1:</strong> ${completed ? "✅ Completed" : "❌ Not completed"}</p>
         </div>
       `;
     }
@@ -73,7 +83,15 @@
       content.innerHTML = `
         <div class="card">
           <h2>Lesson 1: What is a Robot?</h2>
-          <p>A robot is a machine that can sense, think, and act.</p>
+          <p>
+            A robot is a machine that can:
+            <ul>
+              <li>Sense the world</li>
+              <li>Make decisions</li>
+              <li>Act using motors</li>
+            </ul>
+          </p>
+          <button onclick="showQuiz()">Take Quiz</button>
         </div>
       `;
     }
@@ -81,14 +99,41 @@
     if (page === "simulator") {
       content.innerHTML = `
         <div class="card">
-          <h2>Robot Simulator</h2>
-          <p>Simulator coming soon 🤖</p>
+          <h2>Robot Simulator 🤖</h2>
+          <p>Coming next!</p>
         </div>
       `;
     }
   }
 
-  // Load home page by default
+  function showQuiz() {
+    content.innerHTML = `
+      <div class="card">
+        <h2>Quiz: What is a Robot?</h2>
+        <p>Which one is a robot?</p>
+
+        <button onclick="checkAnswer(false)">A rock</button><br><br>
+        <button onclick="checkAnswer(true)">A machine with sensors and motors</button><br><br>
+        <button onclick="checkAnswer(false)">A book</button>
+      </div>
+    `;
+  }
+
+  function checkAnswer(correct) {
+    if (correct) {
+      saveProgress("lesson1", "done");
+      content.innerHTML = `
+        <div class="card">
+          <h2>✅ Correct!</h2>
+          <p>You completed Lesson 1.</p>
+          <button onclick="showPage('home')">Go Home</button>
+        </div>
+      `;
+    } else {
+      alert("❌ Try again!");
+    }
+  }
+
   showPage("home");
 </script>
 
