@@ -2,81 +2,207 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>3D CAD - Robotics</title>
+<title>Robotics Learning App</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  body { margin:0; overflow:hidden; }
-  canvas { display:block; }
-  #backButton {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    padding: 8px 12px;
-    background:#2563eb;
-    color:white;
-    border:none;
-    border-radius:5px;
-    cursor:pointer;
-    z-index: 1;
-  }
+body { margin:0; font-family: Arial, sans-serif; background:#f3f4f6; }
+header { background:#2563eb; color:white; padding:16px; }
+nav button { margin-right:10px; padding:8px 12px; border:none; background:white; color:#2563eb; font-weight:bold; cursor:pointer; border-radius:6px; }
+main { padding:20px; }
+.card { background:white; padding:16px; border-radius:8px; margin-bottom:16px; }
+
+/* Robot Styles */
+.robot-container { position:relative; height:150px; margin-top:20px; border:1px dashed #ccc; overflow:hidden; }
+.robot { width:60px; height:60px; background:#f97316; border-radius:10px; position:absolute; left:0; top:40px; transition:left 0.2s; }
+.eye { width:8px; height:8px; background:black; border-radius:50%; position:absolute; top:15px; }
+.eye.left { left:15px; }
+.eye.right { right:15px; }
+
+/* Obstacles */
+.obstacle { width:40px; height:40px; background:#10b981; position:absolute; top:50px; border-radius:5px; cursor:grab; }
 </style>
 </head>
 <body>
 
-<button id="backButton" onclick="window.location.href='index.html'">← Back</button>
+<header>
+<h2>Robotics Learning App</h2>
+<nav>
+<button onclick="showPage('home')">Home</button>
+<button onclick="showPage('learn')">Learn</button>
+<button onclick="showPage('simulator')">Simulator</button>
+<button onclick="window.location.href='cad.html'">Open 3D CAD</button>
+</nav>
+</header>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+<main id="content"></main>
+
 <script>
-  // Basic Three.js setup
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-  const renderer = new THREE.WebGLRenderer({antialias:true});
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
+const content = document.getElementById("content");
 
-  // Grid / floor
-  const gridHelper = new THREE.GridHelper(500, 20);
-  scene.add(gridHelper);
+// Save/load progress
+function saveProgress(key, value) { localStorage.setItem(key, value); }
+function getProgress(key) { return localStorage.getItem(key); }
 
-  // Simple robot part (cube)
-  const geometry = new THREE.BoxGeometry(20,20,20);
-  const material = new THREE.MeshStandardMaterial({color:0xffa500});
-  const cube = new THREE.Mesh(geometry, material);
-  cube.position.y = 10;
-  scene.add(cube);
-
-  // Light
-  const light = new THREE.DirectionalLight(0xffffff,1);
-  light.position.set(50,50,50);
-  scene.add(light);
-  const ambient = new THREE.AmbientLight(0x404040);
-  scene.add(ambient);
-
-  camera.position.set(50,50,50);
-  camera.lookAt(0,0,0);
-
-  // Orbit controls for rotation (optional)
-  const script = document.createElement('script');
-  script.src='https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js';
-  script.onload=()=> {
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.update();
-    animate();
-  };
-  document.body.appendChild(script);
-
-  function animate(){
-    requestAnimationFrame(animate);
-    renderer.render(scene,camera);
+// Show pages
+function showPage(page){
+  if(page==='home'){
+    const completed=getProgress("lesson1")==="done";
+    content.innerHTML=`<div class="card">
+      <h2>Welcome 👋</h2>
+      <p>Learn robotics step by step.</p>
+      <p><strong>Lesson 1:</strong> ${completed ? "✅ Completed" : "❌ Not completed"}</p>
+      <button onclick="window.location.href='cad.html'">Open 3D CAD</button>
+    </div>`;
   }
+  if(page==='learn'){
+    content.innerHTML=`<div class="card">
+      <h2>Lesson 1: What is a Robot?</h2>
+      <p>A robot is a machine that can:</p>
+      <ul>
+        <li>Sense the world</li>
+        <li>Make decisions</li>
+        <li>Move using motors</li>
+      </ul>
+      <button onclick="showQuiz()">Take Quiz</button>
+    </div>`;
+  }
+  if(page==='simulator'){
+    content.innerHTML=`<div class="card">
+      <h2>Robot Simulator 🤖</h2>
+      <p>The robot avoids obstacles automatically! Drag obstacles around.</p>
+      <div class="robot-container" id="robot-container">
+        <div id="robot" class="robot">
+          <div class="eye left"></div>
+          <div class="eye right"></div>
+        </div>
+      </div>
+      <br>
+      <button onclick="moveRobot('left')">⬅️ Left</button>
+      <button onclick="moveRobot('right')">➡️ Right</button>
+      <button onclick="moveRobot('stop')">⏹ Stop</button>
+      <br><br>
+      <button onclick="window.location.href='cad.html'">Open 3D CAD</button>
+    </div>`;
 
-  // Resize
-  window.addEventListener('resize',()=>{
-    camera.aspect = window.innerWidth/window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+    const container=document.getElementById("robot-container");
+    const obsPositions=[50,150,250];
+    for(let i=0;i<obsPositions.length;i++){
+      const obs=document.createElement("div");
+      obs.classList.add("obstacle");
+      obs.style.left=obsPositions[i]+"px";
+      container.appendChild(obs);
+      makeDraggable(obs, container);
+    }
+
+    autoMoveRobot();
+  }
+}
+
+// Quiz
+function showQuiz(){
+  content.innerHTML=`<div class="card">
+    <h2>Quiz: What is a Robot?</h2>
+    <p>Which one is a robot?</p>
+    <button onclick="checkAnswer(false)">A rock</button><br><br>
+    <button onclick="checkAnswer(true)">A machine with sensors and motors</button><br><br>
+    <button onclick="checkAnswer(false)">A book</button>
+  </div>`;
+}
+
+function checkAnswer(correct){
+  if(correct){
+    saveProgress("lesson1","done");
+    content.innerHTML=`<div class="card">
+      <h2>✅ Correct!</h2>
+      <p>You completed Lesson 1.</p>
+      <button onclick="showPage('home')">Go Home</button>
+    </div>`;
+  } else { alert("❌ Try again!"); }
+}
+
+// Robot movement & sensor
+let position=0; let moving; let autoDirection="right";
+
+function moveRobot(direction){
+  const robot=document.getElementById("robot");
+  const container=document.querySelector(".robot-container");
+  const maxPosition=container.offsetWidth-robot.offsetWidth;
+  clearInterval(moving);
+
+  if(direction==="left"){
+    moving=setInterval(()=>{
+      position=Math.max(0,position-10);
+      robot.style.left=position+"px";
+      autoStopSensor();
+    },300);
+  }
+  if(direction==="right"){
+    moving=setInterval(()=>{
+      position=Math.min(maxPosition,position+10);
+      robot.style.left=position+"px";
+      autoStopSensor();
+    },300);
+  }
+  if(direction==="stop"){ clearInterval(moving); }
+}
+
+function autoStopSensor(){
+  const robot=document.getElementById("robot");
+  const container=document.querySelector(".robot-container");
+  const maxPosition=container.offsetWidth-robot.offsetWidth;
+  if(position>=maxPosition||position<=0){ clearInterval(moving); }
+}
+
+// Autonomous movement with obstacle avoidance
+function checkCollision(){
+  const robot=document.getElementById("robot");
+  const obstacles=document.querySelectorAll(".obstacle");
+  const robotRect=robot.getBoundingClientRect();
+
+  for(let obs of obstacles){
+    const obsRect=obs.getBoundingClientRect();
+    if(robotRect.left<obsRect.right && robotRect.right>obsRect.left &&
+       robotRect.top<obsRect.bottom && robotRect.bottom>obsRect.top){
+      return true;
+    }
+  }
+  return false;
+}
+
+function autoMoveRobot(){
+  const robot=document.getElementById("robot");
+  const container=document.getElementById("robot-container");
+  const maxPosition=container.offsetWidth-robot.offsetWidth;
+  clearInterval(moving);
+
+  moving=setInterval(()=>{
+    if(autoDirection==="right"){ position=Math.min(maxPosition,position+5); }
+    else{ position=Math.max(0,position-5); }
+    robot.style.left=position+"px";
+    if(position>=maxPosition || position<=0 || checkCollision()){ autoDirection=(autoDirection==="right"?"left":"right"); }
+  },200);
+}
+
+// Make obstacles draggable
+function makeDraggable(el, container){
+  let offsetX, startX;
+  el.onmousedown=function(e){
+    e.preventDefault();
+    startX=e.clientX;
+    offsetX=parseInt(el.style.left);
+    document.onmousemove=drag;
+    document.onmouseup=stopDrag;
+  }
+  function drag(e){
+    let newX=offsetX+(e.clientX-startX);
+    newX=Math.max(0, Math.min(container.offsetWidth-40,newX));
+    el.style.left=newX+"px";
+  }
+  function stopDrag(){ document.onmousemove=null; document.onmouseup=null; }
+}
+
+// Load home by default
+showPage("home");
 </script>
-
 </body>
 </html>
