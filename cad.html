@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>CAD Test</title>
-<style>
-  body { margin: 0; overflow: hidden; background: black; }
-  #back {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    padding: 8px 12px;
-    background: #2563eb;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    z-index: 10;
-  }
-</style>
+  <meta charset="UTF-8">
+  <title>CAD Builder</title>
+  <style>
+    body { margin:0; overflow:hidden; background:#111; }
+    #back {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 8px 12px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      z-index: 10;
+    }
+  </style>
 </head>
 <body>
 
@@ -25,9 +25,11 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 
 <script>
+  // Scene
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x111111);
 
+  // Camera
   const camera = new THREE.PerspectiveCamera(
     75,
     window.innerWidth / window.innerHeight,
@@ -35,16 +37,15 @@
     1000
   );
   camera.position.set(60, 60, 60);
+  camera.lookAt(0, 0, 0);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  // Renderer
+  const renderer = new THREE.WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  // Lights
-  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-  const light = new THREE.DirectionalLight(0xffffff, 0.6);
-  light.position.set(50, 100, 50);
-  scene.add(light);
+  // Light
+  scene.add(new THREE.AmbientLight(0xffffff, 1));
 
   // Build plate
   const plate = new THREE.Mesh(
@@ -63,86 +64,9 @@
   const cube = new THREE.Mesh(
     new THREE.BoxGeometry(20, 20, 20),
     new THREE.MeshStandardMaterial({ color: 0xffa500 })
-    // ----- DRAG LOGIC -----
-// ----- SAFE DRAG LOGIC -----
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-let dragging = false;
-
-renderer.domElement.addEventListener('mousedown', (event) => {
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObject(cube);
-
-  if (hits.length > 0) {
-    dragging = true;
-  }
-});
-
-renderer.domElement.addEventListener('mouseup', () => {
-  dragging = false;
-});
-
-renderer.domElement.addEventListener('mousemove', (event) => {
-  if (!dragging) return;
-
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  raycaster.setFromCamera(mouse, camera);
-
-  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-  const point = new THREE.Vector3();
-
-  // ✅ SAFE CHECK (this prevents crashing)
-  if (raycaster.ray.intersectPlane(plane, point)) {
-    cube.position.x = point.x;
-    cube.position.z = point.z;
-  }
-});
-
-
-  // ---- SAFE CAMERA CONTROLS ----
-  let isDragging = false;
-  let prevX = 0;
-  let prevY = 0;
-
-  renderer.domElement.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    prevX = e.clientX;
-    prevY = e.clientY;
-  });
-
-  window.addEventListener('mouseup', () => {
-    isDragging = false;
-  });
-
-  window.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-
-    const dx = e.clientX - prevX;
-    const dy = e.clientY - prevY;
-
-    camera.position.x -= dx * 0.1;
-    camera.position.y += dy * 0.1;
-    camera.lookAt(0, 0, 0);
-
-    prevX = e.clientX;
-    prevY = e.clientY;
-  });
-
-  window.addEventListener('wheel', (e) => {
-    camera.position.z += e.deltaY * 0.05;
-  });
-
-  // Resize
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+  );
+  cube.position.y = 12.5;
+  scene.add(cube);
 
   function animate() {
     requestAnimationFrame(animate);
@@ -150,3 +74,6 @@ renderer.domElement.addEventListener('mousemove', (event) => {
   }
   animate();
 </script>
+
+</body>
+</html>
