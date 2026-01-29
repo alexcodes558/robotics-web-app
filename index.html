@@ -178,34 +178,54 @@
       alert("❌ Try again!");
     }
   }
+function moveRobot(direction) {
+  const robot = document.getElementById("robot");
+  const container = document.querySelector(".robot-container");
+  const maxPosition = container.offsetWidth - robot.offsetWidth;
 
-  let position = 0;
-  let moving;
+  clearInterval(moving);
 
-  function moveRobot(direction) {
-    const robot = document.getElementById("robot");
-    clearInterval(moving);
-
-    if (direction === "left") {
-      moving = setInterval(() => {
-        position = Math.max(0, position - 10);
-        robot.style.left = position + "px";
-      }, 300);
-    }
-
-    if (direction === "right") {
-      moving = setInterval(() => {
-        position = Math.min(200, position + 10);
-        robot.style.left = position + "px";
-      }, 300);
-    }
-
-    if (direction === "stop") {
-      clearInterval(moving);
-    }
+  if (direction === "left") {
+    moving = setInterval(() => {
+      position = Math.max(0, position - 10);
+      robot.style.left = position + "px";
+      autoStopSensor();
+    }, 300);
   }
 
-  showPage("home");
+  if (direction === "right") {
+    moving = setInterval(() => {
+      position = Math.min(maxPosition, position + 10);
+      robot.style.left = position + "px";
+      autoStopSensor();
+    }, 300);
+  }
+
+  if (direction === "stop") {
+    clearInterval(moving);
+  }
+}
+function autoStopSensor() {
+  const robot = document.getElementById("robot");
+  const container = document.querySelector(".robot-container");
+
+  // Get container width and robot width
+  const maxPosition = container.offsetWidth - robot.offsetWidth;
+
+  // Check if robot is too close to right edge
+  if (position >= maxPosition) {
+    clearInterval(moving);
+    alert("⚠️ Robot stopped: sensor detected a wall!");
+  }
+
+  // Check if robot is too close to left edge
+  if (position <= 0) {
+    clearInterval(moving);
+    alert("⚠️ Robot stopped: sensor detected a wall!");
+  }
+}
+
+  
 </script>
 
 </body>
