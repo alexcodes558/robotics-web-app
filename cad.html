@@ -2,62 +2,63 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ultimate Robotics CAD — Pro</title>
+<title>Pro Robotics CAD — Onshape Style</title>
 <style>
 body { margin:0; overflow:hidden; font-family:Arial,sans-serif; }
 canvas { display:block; }
-button, select { position:absolute; z-index:10; padding:6px 10px; font-size:14px; cursor:pointer; }
-#backBtn { top:10px; left:10px; }
-#addPartBtn { top:50px; left:10px; }
-#shapeSelect { top:90px; left:10px; }
-#colorSelect { top:130px; left:10px; }
-#saveBtn { top:170px; left:10px; }
-#loadBtn { top:210px; left:10px; }
-#info { position:absolute; bottom:10px; left:10px; background:rgba(255,255,255,0.8); padding:6px; font-size:14px; border-radius:4px; min-width:200px;}
+
+/* Top Toolbar */
+#toolbar { position:absolute; top:0; left:0; right:0; height:40px; background:#333; color:#fff; display:flex; align-items:center; padding:0 10px; z-index:20; }
+#toolbar button { margin-right:8px; padding:5px 10px; background:#555; border:none; color:#fff; cursor:pointer; border-radius:3px; }
+#toolbar button:hover { background:#777; }
+
+/* Side Panel */
+#sidebar { position:absolute; top:40px; left:0; width:120px; bottom:0; background:#222; color:#fff; padding:10px; z-index:15; display:flex; flex-direction:column; }
+#sidebar h3 { margin:0 0 10px 0; font-size:14px; text-align:center; }
+#sidebar button { margin-bottom:6px; padding:6px; background:#444; border:none; color:#fff; cursor:pointer; border-radius:3px; }
+#sidebar button:hover { background:#666; }
+
+/* Info Panel */
+#info { position:absolute; bottom:10px; left:140px; background:rgba(255,255,255,0.8); padding:6px; font-size:14px; border-radius:4px; min-width:250px; z-index:10; }
+
+/* Snap Preview */
+.snap-preview { opacity:0.5; }
 </style>
 </head>
 <body>
 
-<button id="backBtn" onclick="window.history.back()">Back</button>
-<button id="addPartBtn">Add Part</button>
-<select id="shapeSelect">
-  <option value="cube">Cube</option>
-  <option value="cylinder">Cylinder</option>
-  <option value="sphere">Sphere</option>
-</select>
-<select id="colorSelect">
-  <option value="0xffa500">Orange</option>
-  <option value="0x0000ff">Blue</option>
-  <option value="0xff0000">Red</option>
-  <option value="0x00ff00">Green</option>
-  <option value="0xffff00">Yellow</option>
-</select>
-<button id="saveBtn">Save Assembly</button>
-<button id="loadBtn">Load Assembly</button>
-<div id="info">Right-click drag: Orbit | Middle drag: Pan | Scroll: Zoom | Left-click: Select/Drag</div>
+<!-- Toolbar -->
+<div id="toolbar">
+  <button id="undoBtn">Undo</button>
+  <button id="redoBtn">Redo</button>
+  <button id="saveBtn">Save</button>
+  <button id="loadBtn">Load</button>
+  <button id="exportBtn">Export JSON</button>
+</div>
+
+<!-- Sidebar Part Library -->
+<div id="sidebar">
+  <h3>Parts Library</h3>
+  <button data-shape="cube" data-color="0xffa500">Cube</button>
+  <button data-shape="cylinder" data-color="0x0000ff">Cylinder</button>
+  <button data-shape="sphere" data-color="0xff0000">Sphere</button>
+</div>
+
+<!-- Info Panel -->
+<div id="info">Right-drag: Orbit | Middle-drag: Pan | Scroll: Zoom | Left-click: Select/Drag</div>
 
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js';
 
-// --- Scene ---
+// --- Scene & Renderer ---
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xe0e0e0);
-
-// --- Camera ---
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 100);
 let camTarget = new THREE.Vector3(0,0,0);
 let camRadius = 15;
 let camAngleX = Math.PI/4;
 let camAngleY = Math.PI/6;
-updateCamera();
-function updateCamera(){
-  camera.position.x = camTarget.x + camRadius * Math.cos(camAngleY) * Math.sin(camAngleX);
-  camera.position.y = camTarget.y + camRadius * Math.sin(camAngleY);
-  camera.position.z = camTarget.z + camRadius * Math.cos(camAngleY) * Math.cos(camAngleX);
-  camera.lookAt(camTarget);
-}
 
-// --- Renderer ---
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
@@ -71,16 +72,18 @@ dirLight.castShadow = true;
 scene.add(dirLight);
 
 // --- Grid & Plate ---
-scene.add(new THREE.GridHelper(20,40,0x888888,0xcccccc));
+const grid = new THREE.GridHelper(20,40,0x888888,0xcccccc);
+scene.add(grid);
 const plate = new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.MeshStandardMaterial({color:0xaaaaaa, side:THREE.DoubleSide}));
 plate.rotation.x = -Math.PI/2;
 plate.receiveShadow = true;
 scene.add(plate);
 
-// --- Parts ---
-const parts=[];
+// --- Parts Management ---
+let parts = [];
 let partCounter=0;
 let selected=null;
+let undoStack=[], redoStack=[];
 function createPart(shape="cube", color=0xffa500, pos={x:0,y:0.5,z:0}){
   let geom;
   switch(shape){
@@ -95,10 +98,11 @@ function createPart(shape="cube", color=0xffa500, pos={x:0,y:0.5,z:0}){
   mesh.userData={id:++partCounter, shape, color};
   scene.add(mesh);
   parts.push(mesh);
+  saveState();
   return mesh;
 }
 
-// --- Initial Robot ---
+// --- Sample Robot ---
 createPart("cube",0xffa500,{x:0,y:0.5,z:0});
 createPart("cube",0x0000ff,{x:2,y:0.5,z:0});
 createPart("cube",0xff0000,{x:-2,y:0.5,z:0});
@@ -131,7 +135,7 @@ window.addEventListener('mousemove',e=>{if(isDragging && selected){const p=getMo
 window.addEventListener('mouseup',e=>{if(selected){selected.position.x=snap(selected.position.x); selected.position.z=snap(selected.position.z); resetColor(selected); updateInfo();} isDragging=false;});
 function resetColor(p){p.material.color.set(p.userData.color);}
 
-// --- Keyboard Rotation/Scale ---
+// --- Keyboard ---
 window.addEventListener('keydown',e=>{
   if(!selected)return;
   switch(e.key.toLowerCase()){
@@ -143,17 +147,7 @@ window.addEventListener('keydown',e=>{
   updateInfo();
 });
 
-// --- Add Part Button ---
-const addBtn=document.getElementById("addPartBtn");
-const shapeSel=document.getElementById("shapeSelect");
-const colorSel=document.getElementById("colorSelect");
-addBtn.addEventListener('click',()=>{
-  const shape=shapeSel.value;
-  const color=parseInt(colorSel.value);
-  createPart(shape,color,{x:0,y:parts.length*1+0.5,z:0});
-});
-
-// --- Save/Load ---
+// --- Toolbar Buttons ---
 document.getElementById("saveBtn").addEventListener('click',()=>{
   const data=parts.map(p=>({shape:p.userData.shape,color:p.userData.color,pos:p.position.toArray(),rot:p.rotation.toArray(),scale:p.scale.toArray()}));
   localStorage.setItem("robotAssembly",JSON.stringify(data));
@@ -165,8 +159,22 @@ document.getElementById("loadBtn").addEventListener('click',()=>{
   parts.length=0;
   data.forEach(d=>{
     const p=createPart(d.shape,d.color,{x:d.pos[0],y:d.pos[1],z:d.pos[2]});
-    p.rotation.fromArray(d.rot);
-    p.scale.fromArray(d.scale);
+    p.rotation.fromArray(d.rot); p.scale.fromArray(d.scale);
+  });
+});
+document.getElementById("exportBtn").addEventListener('click',()=>{
+  const data=parts.map(p=>({shape:p.userData.shape,color:p.userData.color,pos:p.position.toArray(),rot:p.rotation.toArray(),scale:p.scale.toArray()}));
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='assembly.json'; a.click(); URL.revokeObjectURL(url);
+});
+
+// --- Sidebar Part Library ---
+document.querySelectorAll('#sidebar button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const shape=btn.getAttribute('data-shape');
+    const color=parseInt(btn.getAttribute('data-color'));
+    createPart(shape,color,{x:0,y:0.5,z:0});
   });
 });
 
@@ -190,20 +198,28 @@ window.addEventListener('mousemove',e=>{
 });
 window.addEventListener('wheel',e=>{ camRadius+=e.deltaY*0.01; camRadius=Math.max(5,Math.min(50,camRadius)); updateCamera(); });
 
-// --- Info Overlay ---
+// --- Info Panel ---
 const infoDiv=document.getElementById("info");
 function updateInfo(){
   if(selected){
     infoDiv.innerHTML=`ID: ${selected.userData.id}<br>Shape: ${selected.userData.shape}<br>Pos: ${selected.position.x.toFixed(1)},${selected.position.y.toFixed(1)},${selected.position.z.toFixed(1)}<br>Rot: ${selected.rotation.y.toFixed(2)}<br>Scale: ${selected.scale.x.toFixed(2)}`;
   } else {
-    infoDiv.innerHTML=`Right-click drag: Orbit | Middle drag: Pan | Scroll: Zoom | Left-click: Select/Drag`;
+    infoDiv.innerHTML=`Right-drag: Orbit | Middle-drag: Pan | Scroll: Zoom | Left-click: Select/Drag`;
   }
 }
+
+// --- Undo/Redo ---
+function saveState(){ undoStack.push(parts.map(p=>serializePart(p))); if(undoStack.length>50) undoStack.shift(); }
+function serializePart(p){ return {shape:p.userData.shape,color:p.userData.color,pos:p.position.toArray(),rot:p.rotation.toArray(),scale:p.scale.toArray()}; }
+function restoreState(state){ parts.forEach(p=>scene.remove(p)); parts.length=0; state.forEach(d=>{ const p=createPart(d.shape,d.color,{x:d.pos[0],y:d.pos[1],z:d.pos[2]}); p.rotation.fromArray(d.rot); p.scale.fromArray(d.scale); }); updateInfo();}
+document.getElementById("undoBtn").addEventListener('click',()=>{ if(undoStack.length>1){ const state=undoStack.pop(); redoStack.push(state); restoreState(undoStack[undoStack.length-1]); } });
+document.getElementById("redoBtn").addEventListener('click',()=>{ if(redoStack.length>0){ const state=redoStack.pop(); restoreState(state); undoStack.push(state); } });
 
 // --- Animate & Resize ---
 function animate(){requestAnimationFrame(animate); renderer.render(scene,camera);}
 animate();
 window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight);});
+
 </script>
 </body>
 </html>
