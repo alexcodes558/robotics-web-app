@@ -64,6 +64,7 @@
     new THREE.BoxGeometry(20, 20, 20),
     new THREE.MeshStandardMaterial({ color: 0xffa500 })
     // ----- DRAG LOGIC -----
+// ----- SAFE DRAG LOGIC -----
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let dragging = false;
@@ -73,9 +74,9 @@ renderer.domElement.addEventListener('mousedown', (event) => {
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
   raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObject(cube);
+  const hits = raycaster.intersectObject(cube);
 
-  if (intersects.length > 0) {
+  if (hits.length > 0) {
     dragging = true;
   }
 });
@@ -92,17 +93,16 @@ renderer.domElement.addEventListener('mousemove', (event) => {
 
   raycaster.setFromCamera(mouse, camera);
 
-  const planeY = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-  const intersection = new THREE.Vector3();
-  raycaster.ray.intersectPlane(planeY, intersection);
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const point = new THREE.Vector3();
 
-  cube.position.x = intersection.x;
-  cube.position.z = intersection.z;
+  // ✅ SAFE CHECK (this prevents crashing)
+  if (raycaster.ray.intersectPlane(plane, point)) {
+    cube.position.x = point.x;
+    cube.position.z = point.z;
+  }
 });
 
-  );
-  cube.position.y = 12.5;
-  scene.add(cube);
 
   // ---- SAFE CAMERA CONTROLS ----
   let isDragging = false;
