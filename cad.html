@@ -2,45 +2,59 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Robotics CAD — Grid & Camera</title>
+<title>Ultimate Robotics CAD — Pro</title>
 <style>
-body { margin:0; overflow:hidden; }
+body { margin:0; overflow:hidden; font-family:Arial,sans-serif; }
 canvas { display:block; }
-button {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    z-index: 10;
-    padding: 8px 12px;
-    font-size: 16px;
-}
-#addPartBtn { top:50px; }
+button, select { position:absolute; z-index:10; padding:6px 10px; font-size:14px; cursor:pointer; }
+#backBtn { top:10px; left:10px; }
+#addPartBtn { top:50px; left:10px; }
+#shapeSelect { top:90px; left:10px; }
+#colorSelect { top:130px; left:10px; }
+#saveBtn { top:170px; left:10px; }
+#loadBtn { top:210px; left:10px; }
+#info { position:absolute; bottom:10px; left:10px; background:rgba(255,255,255,0.8); padding:6px; font-size:14px; border-radius:4px; min-width:200px;}
 </style>
 </head>
 <body>
 
-<button onclick="window.history.back()">Back</button>
+<button id="backBtn" onclick="window.history.back()">Back</button>
 <button id="addPartBtn">Add Part</button>
+<select id="shapeSelect">
+  <option value="cube">Cube</option>
+  <option value="cylinder">Cylinder</option>
+  <option value="sphere">Sphere</option>
+</select>
+<select id="colorSelect">
+  <option value="0xffa500">Orange</option>
+  <option value="0x0000ff">Blue</option>
+  <option value="0xff0000">Red</option>
+  <option value="0x00ff00">Green</option>
+  <option value="0xffff00">Yellow</option>
+</select>
+<button id="saveBtn">Save Assembly</button>
+<button id="loadBtn">Load Assembly</button>
+<div id="info">Right-click drag: Orbit | Middle drag: Pan | Scroll: Zoom | Left-click: Select/Drag</div>
 
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js';
 
-// --- Scene & Camera ---
+// --- Scene ---
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xe0e0e0);
 
+// --- Camera ---
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 100);
-let cameraTarget = new THREE.Vector3(0,0,0);
-let cameraRadius = 15;
-let cameraAngleX = Math.PI/4; // horizontal rotation
-let cameraAngleY = Math.PI/6; // vertical rotation
+let camTarget = new THREE.Vector3(0,0,0);
+let camRadius = 15;
+let camAngleX = Math.PI/4;
+let camAngleY = Math.PI/6;
 updateCamera();
-
-function updateCamera() {
-    camera.position.x = cameraTarget.x + cameraRadius * Math.cos(cameraAngleY) * Math.sin(cameraAngleX);
-    camera.position.y = cameraTarget.y + cameraRadius * Math.sin(cameraAngleY);
-    camera.position.z = cameraTarget.z + cameraRadius * Math.cos(cameraAngleY) * Math.cos(cameraAngleX);
-    camera.lookAt(cameraTarget);
+function updateCamera(){
+  camera.position.x = camTarget.x + camRadius * Math.cos(camAngleY) * Math.sin(camAngleX);
+  camera.position.y = camTarget.y + camRadius * Math.sin(camAngleY);
+  camera.position.z = camTarget.z + camRadius * Math.cos(camAngleY) * Math.cos(camAngleX);
+  camera.lookAt(camTarget);
 }
 
 // --- Renderer ---
@@ -50,165 +64,146 @@ renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
 // --- Lights ---
-const ambientLight = new THREE.AmbientLight(0xffffff,0.6);
-scene.add(ambientLight);
-const directionalLight = new THREE.DirectionalLight(0xffffff,0.6);
-directionalLight.position.set(10,20,10);
-directionalLight.castShadow = true;
-scene.add(directionalLight);
+scene.add(new THREE.AmbientLight(0xffffff,0.6));
+const dirLight = new THREE.DirectionalLight(0xffffff,0.6);
+dirLight.position.set(10,20,10);
+dirLight.castShadow = true;
+scene.add(dirLight);
 
 // --- Grid & Plate ---
-const gridHelper = new THREE.GridHelper(20,40,0x888888,0xcccccc);
-scene.add(gridHelper);
-
-const plate = new THREE.Mesh(
-    new THREE.PlaneGeometry(20,20),
-    new THREE.MeshStandardMaterial({color:0xaaaaaa, side:THREE.DoubleSide})
-);
+scene.add(new THREE.GridHelper(20,40,0x888888,0xcccccc));
+const plate = new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.MeshStandardMaterial({color:0xaaaaaa, side:THREE.DoubleSide}));
 plate.rotation.x = -Math.PI/2;
 plate.receiveShadow = true;
 scene.add(plate);
 
-// --- Robot parts ---
-const parts = [];
-function createPart(color=0xffa500, position={x:0,y:0.5,z:0}){
-    const cube = new THREE.Mesh(
-        new THREE.BoxGeometry(1,1,1),
-        new THREE.MeshStandardMaterial({color})
-    );
-    cube.position.set(position.x,position.y,position.z);
-    cube.castShadow = true;
-    cube.receiveShadow = true;
-    scene.add(cube);
-    parts.push(cube);
-}
-createPart(0xffa500,{x:0,y:0.5,z:0});
-createPart(0x0000ff,{x:2,y:0.5,z:0});
-createPart(0xff0000,{x:-2,y:0.5,z:0});
-
-// --- Raycaster & dragging ---
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-let selected = null;
-let isDragging = false;
-
-// --- Snap to grid ---
-function snapToGrid(value){ return Math.round(value); }
-function getMouseOnPlane(event, planeY=0.5){
-    mouse.x = (event.clientX / window.innerWidth)*2-1;
-    mouse.y = -(event.clientY/window.innerHeight)*2+1;
-    raycaster.setFromCamera(mouse,camera);
-    const plane = new THREE.Plane(new THREE.Vector3(0,1,0),-planeY);
-    const point = new THREE.Vector3();
-    raycaster.ray.intersectPlane(plane,point);
-    return point;
+// --- Parts ---
+const parts=[];
+let partCounter=0;
+let selected=null;
+function createPart(shape="cube", color=0xffa500, pos={x:0,y:0.5,z:0}){
+  let geom;
+  switch(shape){
+    case "cube": geom=new THREE.BoxGeometry(1,1,1); break;
+    case "cylinder": geom=new THREE.CylinderGeometry(0.5,0.5,1,32); break;
+    case "sphere": geom=new THREE.SphereGeometry(0.5,32,32); break;
+  }
+  const mat=new THREE.MeshStandardMaterial({color});
+  const mesh=new THREE.Mesh(geom,mat);
+  mesh.position.set(pos.x,pos.y,pos.z);
+  mesh.castShadow=true; mesh.receiveShadow=true;
+  mesh.userData={id:++partCounter, shape, color};
+  scene.add(mesh);
+  parts.push(mesh);
+  return mesh;
 }
 
-// --- Mouse events for dragging ---
-function onMouseDown(e){
-    raycaster.setFromCamera(mouse,camera);
-    const intersects = raycaster.intersectObjects(parts);
-    if(intersects.length>0){
-        selected = intersects[0].object;
-        selected.material.color.set(0x00ff00);
-        isDragging = true;
-    } else {
-        if(selected) resetColor(selected);
-        selected = null;
-    }
-}
-function onMouseMove(e){
-    if(isDragging && selected){
-        const point = getMouseOnPlane(e,selected.position.y);
-        selected.position.x = point.x;
-        selected.position.z = point.z;
-    }
-}
-function onMouseUp(e){
-    if(selected){
-        selected.position.x = snapToGrid(selected.position.x);
-        selected.position.z = snapToGrid(selected.position.z);
-        resetColor(selected);
-    }
-    isDragging = false;
-}
-function resetColor(part){
-    if(part===parts[0]) part.material.color.set(0xffa500);
-    else if(part===parts[1]) part.material.color.set(0x0000ff);
-    else if(part===parts[2]) part.material.color.set(0xff0000);
-    else part.material.color.set(0xffa500);
+// --- Initial Robot ---
+createPart("cube",0xffa500,{x:0,y:0.5,z:0});
+createPart("cube",0x0000ff,{x:2,y:0.5,z:0});
+createPart("cube",0xff0000,{x:-2,y:0.5,z:0});
+
+// --- Raycaster & Dragging ---
+const ray=new THREE.Raycaster();
+const mouse=new THREE.Vector2();
+let isDragging=false;
+function snap(v){return Math.round(v);}
+function getMousePlane(event,planeY=0.5){
+  mouse.x = (event.clientX/window.innerWidth)*2-1;
+  mouse.y = -(event.clientY/window.innerHeight)*2+1;
+  ray.setFromCamera(mouse,camera);
+  const plane=new THREE.Plane(new THREE.Vector3(0,1,0),-planeY);
+  const p=new THREE.Vector3();
+  ray.ray.intersectPlane(plane,p);
+  return p;
 }
 
-// --- Keyboard rotate/scale ---
-window.addEventListener('keydown',(e)=>{
-    if(selected){
-        switch(e.key.toLowerCase()){
-            case'q': selected.rotation.y+=Math.PI/16; break;
-            case'e': selected.rotation.y-=Math.PI/16; break;
-            case'z': selected.scale.multiplyScalar(0.9); break;
-            case'x': selected.scale.multiplyScalar(1.1); break;
-        }
-    }
-});
-
-// --- Add new part button ---
-document.getElementById('addPartBtn').addEventListener('click',()=>{
-    createPart(0xffa500,{x:0,y:parts.length*1+0.5,z:0});
-});
-
-// --- Event listeners ---
+// --- Mouse Events ---
 window.addEventListener('mousedown',e=>{
-    if(e.button===0){ // left click for selection
-        mouse.x = (e.clientX/window.innerWidth)*2-1;
-        mouse.y = -(e.clientY/window.innerHeight)*2+1;
-        onMouseDown(e);
-    }
+  if(e.button===0){
+    ray.setFromCamera(mouse,camera);
+    const inter=ray.intersectObjects(parts);
+    if(inter.length>0){ selected=inter[0].object; selected.material.color.set(0x00ff00); isDragging=true; updateInfo();}
+    else {if(selected) resetColor(selected); selected=null; updateInfo();}
+  }
 });
-window.addEventListener('mousemove',onMouseMove);
-window.addEventListener('mouseup',onMouseUp);
+window.addEventListener('mousemove',e=>{if(isDragging && selected){const p=getMousePlane(e,selected.position.y); selected.position.x=p.x; selected.position.z=p.z; updateInfo();}});
+window.addEventListener('mouseup',e=>{if(selected){selected.position.x=snap(selected.position.x); selected.position.z=snap(selected.position.z); resetColor(selected); updateInfo();} isDragging=false;});
+function resetColor(p){p.material.color.set(p.userData.color);}
 
-// --- Custom camera controls ---
-let isRightMouseDown = false;
-let lastMouse = {x:0,y:0};
+// --- Keyboard Rotation/Scale ---
+window.addEventListener('keydown',e=>{
+  if(!selected)return;
+  switch(e.key.toLowerCase()){
+    case'q': selected.rotation.y+=Math.PI/16; break;
+    case'e': selected.rotation.y-=Math.PI/16; break;
+    case'z': selected.scale.multiplyScalar(0.9); break;
+    case'x': selected.scale.multiplyScalar(1.1); break;
+  }
+  updateInfo();
+});
+
+// --- Add Part Button ---
+const addBtn=document.getElementById("addPartBtn");
+const shapeSel=document.getElementById("shapeSelect");
+const colorSel=document.getElementById("colorSelect");
+addBtn.addEventListener('click',()=>{
+  const shape=shapeSel.value;
+  const color=parseInt(colorSel.value);
+  createPart(shape,color,{x:0,y:parts.length*1+0.5,z:0});
+});
+
+// --- Save/Load ---
+document.getElementById("saveBtn").addEventListener('click',()=>{
+  const data=parts.map(p=>({shape:p.userData.shape,color:p.userData.color,pos:p.position.toArray(),rot:p.rotation.toArray(),scale:p.scale.toArray()}));
+  localStorage.setItem("robotAssembly",JSON.stringify(data));
+  alert("Assembly saved!");
+});
+document.getElementById("loadBtn").addEventListener('click',()=>{
+  const data=JSON.parse(localStorage.getItem("robotAssembly")||"[]");
+  parts.forEach(p=>scene.remove(p));
+  parts.length=0;
+  data.forEach(d=>{
+    const p=createPart(d.shape,d.color,{x:d.pos[0],y:d.pos[1],z:d.pos[2]});
+    p.rotation.fromArray(d.rot);
+    p.scale.fromArray(d.scale);
+  });
+});
+
+// --- Camera Controls ---
+let rightDown=false,middleDown=false,lastMouse={x:0,y:0};
 window.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('mousedown',e=>{
-    if(e.button===2) isRightMouseDown=true;
-    lastMouse.x=e.clientX;
-    lastMouse.y=e.clientY;
+  if(e.button===2) rightDown=true;
+  if(e.button===1) middleDown=true;
+  lastMouse.x=e.clientX; lastMouse.y=e.clientY;
 });
 window.addEventListener('mouseup',e=>{
-    if(e.button===2) isRightMouseDown=false;
+  if(e.button===2) rightDown=false;
+  if(e.button===1) middleDown=false;
 });
 window.addEventListener('mousemove',e=>{
-    if(isRightMouseDown){
-        const dx = (e.clientX-lastMouse.x)/200;
-        const dy = (e.clientY-lastMouse.y)/200;
-        cameraAngleX -= dx;
-        cameraAngleY -= dy;
-        cameraAngleY = Math.min(Math.max(0.1, cameraAngleY), Math.PI/2-0.1);
-        updateCamera();
-        lastMouse.x = e.clientX;
-        lastMouse.y = e.clientY;
-    }
+  const dx=e.clientX-lastMouse.x; const dy=e.clientY-lastMouse.y;
+  if(rightDown){ camAngleX-=dx/200; camAngleY-=dy/200; camAngleY=Math.min(Math.max(0.1,camAngleY),Math.PI/2-0.1); updateCamera(); }
+  if(middleDown){ const panSpeed=0.01*camRadius; camTarget.x-=dx*panSpeed; camTarget.z+=dy*panSpeed; updateCamera(); }
+  lastMouse.x=e.clientX; lastMouse.y=e.clientY;
 });
-window.addEventListener('wheel',e=>{
-    cameraRadius += e.deltaY*0.01;
-    cameraRadius = Math.max(5,Math.min(30,cameraRadius));
-    updateCamera();
-});
+window.addEventListener('wheel',e=>{ camRadius+=e.deltaY*0.01; camRadius=Math.max(5,Math.min(50,camRadius)); updateCamera(); });
 
-// --- Animate ---
+// --- Info Overlay ---
+const infoDiv=document.getElementById("info");
+function updateInfo(){
+  if(selected){
+    infoDiv.innerHTML=`ID: ${selected.userData.id}<br>Shape: ${selected.userData.shape}<br>Pos: ${selected.position.x.toFixed(1)},${selected.position.y.toFixed(1)},${selected.position.z.toFixed(1)}<br>Rot: ${selected.rotation.y.toFixed(2)}<br>Scale: ${selected.scale.x.toFixed(2)}`;
+  } else {
+    infoDiv.innerHTML=`Right-click drag: Orbit | Middle drag: Pan | Scroll: Zoom | Left-click: Select/Drag`;
+  }
+}
+
+// --- Animate & Resize ---
 function animate(){requestAnimationFrame(animate); renderer.render(scene,camera);}
 animate();
-
-// --- Resize ---
-window.addEventListener('resize',()=>{
-    camera.aspect = window.innerWidth/window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth,window.innerHeight);
-});
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight);});
 </script>
-
 </body>
 </html>
-
