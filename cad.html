@@ -71,6 +71,70 @@
   function animate() {
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
+    <script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js';
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 100);
+camera.position.set(3, 3, 5);
+
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// --- Build plate ---
+const plateGeometry = new THREE.PlaneGeometry(10, 10);
+const plateMaterial = new THREE.MeshBasicMaterial({color: 0x808080, side: THREE.DoubleSide});
+const plate = new THREE.Mesh(plateGeometry, plateMaterial);
+plate.rotation.x = -Math.PI/2;
+scene.add(plate);
+
+// --- Cube (robot part) ---
+const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+const cubeMaterial = new THREE.MeshBasicMaterial({color: 0xffa500}); // orange
+const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+cube.position.y = 0.5;
+scene.add(cube);
+
+// --- Raycaster for clicks ---
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let selected = null;
+
+function onMouseDown(event) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects([cube]);
+
+    if (intersects.length > 0) {
+        if (selected) selected.material.color.set(0xffa500); // reset previous
+        selected = intersects[0].object;
+        selected.material.color.set(0x00ff00); // selected → green
+    } else {
+        if (selected) selected.material.color.set(0xffa500);
+        selected = null;
+    }
+}
+
+window.addEventListener('mousedown', onMouseDown, false);
+
+// --- Simple render loop ---
+function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+}
+animate();
+
+// --- Handle resize ---
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
   }
   animate();
 </script>
