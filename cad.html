@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>3D CAD - Robotics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { margin:0; overflow:hidden; }
+  canvas { display:block; }
+  #backButton {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 8px 12px;
+    background:#2563eb;
+    color:white;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    z-index: 1;
+  }
+</style>
+</head>
+<body>
+
+<button id="backButton" onclick="window.location.href='index.html'">← Back</button>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+<script>
+  // Basic Three.js setup
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // Grid / floor
+  const gridHelper = new THREE.GridHelper(500, 20);
+  scene.add(gridHelper);
+
+  // Simple robot part (cube)
+  const geometry = new THREE.BoxGeometry(20,20,20);
+  const material = new THREE.MeshStandardMaterial({color:0xffa500});
+  const cube = new THREE.Mesh(geometry, material);
+  cube.position.y = 10;
+  scene.add(cube);
+
+  // Light
+  const light = new THREE.DirectionalLight(0xffffff,1);
+  light.position.set(50,50,50);
+  scene.add(light);
+  const ambient = new THREE.AmbientLight(0x404040);
+  scene.add(ambient);
+
+  camera.position.set(50,50,50);
+  camera.lookAt(0,0,0);
+
+  // Orbit controls for rotation (optional)
+  const script = document.createElement('script');
+  script.src='https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js';
+  script.onload=()=> {
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.update();
+    animate();
+  };
+  document.body.appendChild(script);
+
+  function animate(){
+    requestAnimationFrame(animate);
+    renderer.render(scene,camera);
+  }
+
+  // Resize
+  window.addEventListener('resize',()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+</script>
+
+</body>
+</html>
