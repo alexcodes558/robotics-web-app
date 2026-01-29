@@ -14,11 +14,20 @@
             padding: 8px 12px;
             font-size: 16px;
         }
+        #addPartBtn {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            z-index: 10;
+            padding: 8px 12px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
 
 <button onclick="window.history.back()">Back</button>
+<button id="addPartBtn">Add Part</button>
 
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js';
@@ -26,7 +35,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.m
 // --- Scene and Camera ---
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 100);
-camera.position.set(5, 5, 5);
+camera.position.set(7, 7, 7);
 camera.lookAt(0, 0, 0);
 
 // --- Renderer ---
@@ -45,7 +54,7 @@ scene.add(plate);
 // --- Robot parts container ---
 const parts = [];
 
-// --- Function to create a new part ---
+// --- Function to create a part ---
 function createPart(color=0xffa500, position={x:0, y:0.5, z:0}) {
     const cube = new THREE.Mesh(
         new THREE.BoxGeometry(1,1,1),
@@ -56,20 +65,20 @@ function createPart(color=0xffa500, position={x:0, y:0.5, z:0}) {
     parts.push(cube);
 }
 
-// --- Add multiple parts ---
-createPart(0xffa500, {x:0, y:0.5, z:0});   // orange cube
-createPart(0x0000ff, {x:2, y:0.5, z:0});   // blue cube
-createPart(0xff0000, {x:-2, y:0.5, z:0});  // red cube
+// --- Initial robot parts ---
+createPart(0xffa500, {x:0, y:0.5, z:0});   // orange base
+createPart(0x0000ff, {x:0, y:1.5, z:0});   // blue upper
+createPart(0xff0000, {x:0, y:2.5, z:0});   // red head
 
-// --- Raycaster for selection ---
+// --- Raycaster & dragging ---
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let selected = null;
 let isDragging = false;
 
-// --- Helper: snap to nearest half-unit (0.5) ---
+// --- Snap helper ---
 function snapToGrid(value) {
-    return Math.round(value * 2) / 2; // rounds to nearest 0.5
+    return Math.round(value * 2) / 2; // snap to 0.5 increments
 }
 
 function getMouseOnPlane(event, planeY = 0) {
@@ -83,15 +92,16 @@ function getMouseOnPlane(event, planeY = 0) {
     return point;
 }
 
+// --- Mouse events ---
 function onMouseDown(event) {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
-
+    raycaster.setFromCamera(
+        {x: (event.clientX / window.innerWidth) * 2 - 1, y: -(event.clientY / window.innerHeight) * 2 + 1},
+        camera
+    );
     const intersects = raycaster.intersectObjects(parts);
     if (intersects.length > 0) {
         selected = intersects[0].object;
-        selected.material.color.set(0x00ff00); // selected → green
+        selected.material.color.set(0x00ff00);
         isDragging = true;
     } else {
         if (selected) resetColor(selected);
@@ -101,14 +111,13 @@ function onMouseDown(event) {
 
 function onMouseMove(event) {
     if (!isDragging || !selected) return;
-    const point = getMouseOnPlane(event, 0.5);
+    const point = getMouseOnPlane(event, selected.position.y);
     selected.position.x = point.x;
     selected.position.z = point.z;
 }
 
 function onMouseUp(event) {
     if (selected) {
-        // Snap to nearest 0.5
         selected.position.x = snapToGrid(selected.position.x);
         selected.position.z = snapToGrid(selected.position.z);
         resetColor(selected);
@@ -116,12 +125,40 @@ function onMouseUp(event) {
     isDragging = false;
 }
 
+// --- Keyboard rotation & scaling ---
+window.addEventListener('keydown', (event) => {
+    if (!selected) return;
+
+    switch(event.key.toLowerCase()) {
+        case 'q': // rotate left
+            selected.rotation.y += Math.PI / 16;
+            break;
+        case 'e': // rotate right
+            selected.rotation.y -= Math.PI / 16;
+            break;
+        case 'z': // scale down
+            selected.scale.multiplyScalar(0.9);
+            break;
+        case 'x': // scale up
+            selected.scale.multiplyScalar(1.1);
+            break;
+    }
+}, false);
+
+// --- Reset color helper ---
 function resetColor(part) {
     if (part === parts[0]) part.material.color.set(0xffa500);
     else if (part === parts[1]) part.material.color.set(0x0000ff);
     else if (part === parts[2]) part.material.color.set(0xff0000);
+    else part.material.color.set(0xffa500); // default for new parts
 }
 
+// --- Add new part button ---
+document.getElementById('addPartBtn').addEventListener('click', () => {
+    createPart(0xffa500, {x:0, y:parts.length*1 + 0.5, z:0});
+});
+
+// --- Event listeners ---
 window.addEventListener('mousedown', onMouseDown, false);
 window.addEventListener('mousemove', onMouseMove, false);
 window.addEventListener('mouseup', onMouseUp, false);
