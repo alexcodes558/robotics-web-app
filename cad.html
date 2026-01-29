@@ -35,8 +35,18 @@
   document.body.appendChild(renderer.domElement);
 
   // Grid helper (floor)
-  const gridHelper = new THREE.GridHelper(500, 20);
-  scene.add(gridHelper);
+ // Build plate (solid base)
+const plateGeometry = new THREE.BoxGeometry(400, 5, 400);
+const plateMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
+const buildPlate = new THREE.Mesh(plateGeometry, plateMaterial);
+buildPlate.position.y = -2.5;
+scene.add(buildPlate);
+
+// Grid on top of build plate
+const gridHelper = new THREE.GridHelper(400, 20, 0x000000, 0x000000);
+gridHelper.position.y = 0.01;
+scene.add(gridHelper);
+
 
   // Robot part placeholder (cube)
   const geometry = new THREE.BoxGeometry(20,20,20);
