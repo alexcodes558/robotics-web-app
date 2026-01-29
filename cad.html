@@ -2,224 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pro Robotics CAD — Onshape Style</title>
-<style>
-body { margin:0; overflow:hidden; font-family:Arial,sans-serif; }
-canvas { display:block; }
-
-/* Top Toolbar */
-#toolbar { position:absolute; top:0; left:0; right:0; height:40px; background:#333; color:#fff; display:flex; align-items:center; padding:0 10px; z-index:20; }
-#toolbar button { margin-right:8px; padding:5px 10px; background:#555; border:none; color:#fff; cursor:pointer; border-radius:3px; }
-#toolbar button:hover { background:#777; }
-
-/* Side Panel */
-#sidebar { position:absolute; top:40px; left:0; width:120px; bottom:0; background:#222; color:#fff; padding:10px; z-index:15; display:flex; flex-direction:column; }
-#sidebar h3 { margin:0 0 10px 0; font-size:14px; text-align:center; }
-#sidebar button { margin-bottom:6px; padding:6px; background:#444; border:none; color:#fff; cursor:pointer; border-radius:3px; }
-#sidebar button:hover { background:#666; }
-
-/* Info Panel */
-#info { position:absolute; bottom:10px; left:140px; background:rgba(255,255,255,0.8); padding:6px; font-size:14px; border-radius:4px; min-width:250px; z-index:10; }
-
-/* Snap Preview */
-.snap-preview { opacity:0.5; }
-</style>
+<title>Pro Robotics CAD Workspace</title>
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <!-- Toolbar -->
+  <div id="toolbar"></div>
 
-<!-- Toolbar -->
-<div id="toolbar">
-  <button id="undoBtn">Undo</button>
-  <button id="redoBtn">Redo</button>
-  <button id="saveBtn">Save</button>
-  <button id="loadBtn">Load</button>
-  <button id="exportBtn">Export JSON</button>
-</div>
+  <!-- Left sidebar / part library -->
+  <div id="sidebar"></div>
 
-<!-- Sidebar Part Library -->
-<div id="sidebar">
-  <h3>Parts Library</h3>
-  <button data-shape="cube" data-color="0xffa500">Cube</button>
-  <button data-shape="cylinder" data-color="0x0000ff">Cylinder</button>
-  <button data-shape="sphere" data-color="0xff0000">Sphere</button>
-</div>
+  <!-- Right sidebar / part properties -->
+  <div id="properties"></div>
 
-<!-- Info Panel -->
-<div id="info">Right-drag: Orbit | Middle-drag: Pan | Scroll: Zoom | Left-click: Select/Drag</div>
+  <!-- Bottom history / timeline -->
+  <div id="history"></div>
 
-<script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js';
+  <!-- Info overlay -->
+  <div id="info"></div>
 
-// --- Scene & Renderer ---
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xe0e0e0);
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 100);
-let camTarget = new THREE.Vector3(0,0,0);
-let camRadius = 15;
-let camAngleX = Math.PI/4;
-let camAngleY = Math.PI/6;
-
-const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-document.body.appendChild(renderer.domElement);
-
-// --- Lights ---
-scene.add(new THREE.AmbientLight(0xffffff,0.6));
-const dirLight = new THREE.DirectionalLight(0xffffff,0.6);
-dirLight.position.set(10,20,10);
-dirLight.castShadow = true;
-scene.add(dirLight);
-
-// --- Grid & Plate ---
-const grid = new THREE.GridHelper(20,40,0x888888,0xcccccc);
-scene.add(grid);
-const plate = new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.MeshStandardMaterial({color:0xaaaaaa, side:THREE.DoubleSide}));
-plate.rotation.x = -Math.PI/2;
-plate.receiveShadow = true;
-scene.add(plate);
-
-// --- Parts Management ---
-let parts = [];
-let partCounter=0;
-let selected=null;
-let undoStack=[], redoStack=[];
-function createPart(shape="cube", color=0xffa500, pos={x:0,y:0.5,z:0}){
-  let geom;
-  switch(shape){
-    case "cube": geom=new THREE.BoxGeometry(1,1,1); break;
-    case "cylinder": geom=new THREE.CylinderGeometry(0.5,0.5,1,32); break;
-    case "sphere": geom=new THREE.SphereGeometry(0.5,32,32); break;
-  }
-  const mat=new THREE.MeshStandardMaterial({color});
-  const mesh=new THREE.Mesh(geom,mat);
-  mesh.position.set(pos.x,pos.y,pos.z);
-  mesh.castShadow=true; mesh.receiveShadow=true;
-  mesh.userData={id:++partCounter, shape, color};
-  scene.add(mesh);
-  parts.push(mesh);
-  saveState();
-  return mesh;
-}
-
-// --- Sample Robot ---
-createPart("cube",0xffa500,{x:0,y:0.5,z:0});
-createPart("cube",0x0000ff,{x:2,y:0.5,z:0});
-createPart("cube",0xff0000,{x:-2,y:0.5,z:0});
-
-// --- Raycaster & Dragging ---
-const ray=new THREE.Raycaster();
-const mouse=new THREE.Vector2();
-let isDragging=false;
-function snap(v){return Math.round(v);}
-function getMousePlane(event,planeY=0.5){
-  mouse.x = (event.clientX/window.innerWidth)*2-1;
-  mouse.y = -(event.clientY/window.innerHeight)*2+1;
-  ray.setFromCamera(mouse,camera);
-  const plane=new THREE.Plane(new THREE.Vector3(0,1,0),-planeY);
-  const p=new THREE.Vector3();
-  ray.ray.intersectPlane(plane,p);
-  return p;
-}
-
-// --- Mouse Events ---
-window.addEventListener('mousedown',e=>{
-  if(e.button===0){
-    ray.setFromCamera(mouse,camera);
-    const inter=ray.intersectObjects(parts);
-    if(inter.length>0){ selected=inter[0].object; selected.material.color.set(0x00ff00); isDragging=true; updateInfo();}
-    else {if(selected) resetColor(selected); selected=null; updateInfo();}
-  }
-});
-window.addEventListener('mousemove',e=>{if(isDragging && selected){const p=getMousePlane(e,selected.position.y); selected.position.x=p.x; selected.position.z=p.z; updateInfo();}});
-window.addEventListener('mouseup',e=>{if(selected){selected.position.x=snap(selected.position.x); selected.position.z=snap(selected.position.z); resetColor(selected); updateInfo();} isDragging=false;});
-function resetColor(p){p.material.color.set(p.userData.color);}
-
-// --- Keyboard ---
-window.addEventListener('keydown',e=>{
-  if(!selected)return;
-  switch(e.key.toLowerCase()){
-    case'q': selected.rotation.y+=Math.PI/16; break;
-    case'e': selected.rotation.y-=Math.PI/16; break;
-    case'z': selected.scale.multiplyScalar(0.9); break;
-    case'x': selected.scale.multiplyScalar(1.1); break;
-  }
-  updateInfo();
-});
-
-// --- Toolbar Buttons ---
-document.getElementById("saveBtn").addEventListener('click',()=>{
-  const data=parts.map(p=>({shape:p.userData.shape,color:p.userData.color,pos:p.position.toArray(),rot:p.rotation.toArray(),scale:p.scale.toArray()}));
-  localStorage.setItem("robotAssembly",JSON.stringify(data));
-  alert("Assembly saved!");
-});
-document.getElementById("loadBtn").addEventListener('click',()=>{
-  const data=JSON.parse(localStorage.getItem("robotAssembly")||"[]");
-  parts.forEach(p=>scene.remove(p));
-  parts.length=0;
-  data.forEach(d=>{
-    const p=createPart(d.shape,d.color,{x:d.pos[0],y:d.pos[1],z:d.pos[2]});
-    p.rotation.fromArray(d.rot); p.scale.fromArray(d.scale);
-  });
-});
-document.getElementById("exportBtn").addEventListener('click',()=>{
-  const data=parts.map(p=>({shape:p.userData.shape,color:p.userData.color,pos:p.position.toArray(),rot:p.rotation.toArray(),scale:p.scale.toArray()}));
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download='assembly.json'; a.click(); URL.revokeObjectURL(url);
-});
-
-// --- Sidebar Part Library ---
-document.querySelectorAll('#sidebar button').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    const shape=btn.getAttribute('data-shape');
-    const color=parseInt(btn.getAttribute('data-color'));
-    createPart(shape,color,{x:0,y:0.5,z:0});
-  });
-});
-
-// --- Camera Controls ---
-let rightDown=false,middleDown=false,lastMouse={x:0,y:0};
-window.addEventListener('contextmenu',e=>e.preventDefault());
-window.addEventListener('mousedown',e=>{
-  if(e.button===2) rightDown=true;
-  if(e.button===1) middleDown=true;
-  lastMouse.x=e.clientX; lastMouse.y=e.clientY;
-});
-window.addEventListener('mouseup',e=>{
-  if(e.button===2) rightDown=false;
-  if(e.button===1) middleDown=false;
-});
-window.addEventListener('mousemove',e=>{
-  const dx=e.clientX-lastMouse.x; const dy=e.clientY-lastMouse.y;
-  if(rightDown){ camAngleX-=dx/200; camAngleY-=dy/200; camAngleY=Math.min(Math.max(0.1,camAngleY),Math.PI/2-0.1); updateCamera(); }
-  if(middleDown){ const panSpeed=0.01*camRadius; camTarget.x-=dx*panSpeed; camTarget.z+=dy*panSpeed; updateCamera(); }
-  lastMouse.x=e.clientX; lastMouse.y=e.clientY;
-});
-window.addEventListener('wheel',e=>{ camRadius+=e.deltaY*0.01; camRadius=Math.max(5,Math.min(50,camRadius)); updateCamera(); });
-
-// --- Info Panel ---
-const infoDiv=document.getElementById("info");
-function updateInfo(){
-  if(selected){
-    infoDiv.innerHTML=`ID: ${selected.userData.id}<br>Shape: ${selected.userData.shape}<br>Pos: ${selected.position.x.toFixed(1)},${selected.position.y.toFixed(1)},${selected.position.z.toFixed(1)}<br>Rot: ${selected.rotation.y.toFixed(2)}<br>Scale: ${selected.scale.x.toFixed(2)}`;
-  } else {
-    infoDiv.innerHTML=`Right-drag: Orbit | Middle-drag: Pan | Scroll: Zoom | Left-click: Select/Drag`;
-  }
-}
-
-// --- Undo/Redo ---
-function saveState(){ undoStack.push(parts.map(p=>serializePart(p))); if(undoStack.length>50) undoStack.shift(); }
-function serializePart(p){ return {shape:p.userData.shape,color:p.userData.color,pos:p.position.toArray(),rot:p.rotation.toArray(),scale:p.scale.toArray()}; }
-function restoreState(state){ parts.forEach(p=>scene.remove(p)); parts.length=0; state.forEach(d=>{ const p=createPart(d.shape,d.color,{x:d.pos[0],y:d.pos[1],z:d.pos[2]}); p.rotation.fromArray(d.rot); p.scale.fromArray(d.scale); }); updateInfo();}
-document.getElementById("undoBtn").addEventListener('click',()=>{ if(undoStack.length>1){ const state=undoStack.pop(); redoStack.push(state); restoreState(undoStack[undoStack.length-1]); } });
-document.getElementById("redoBtn").addEventListener('click',()=>{ if(redoStack.length>0){ const state=redoStack.pop(); restoreState(state); undoStack.push(state); } });
-
-// --- Animate & Resize ---
-function animate(){requestAnimationFrame(animate); renderer.render(scene,camera);}
-animate();
-window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight);});
-
-</script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
