@@ -23,6 +23,10 @@
 <button id="back" onclick="location.href='index.html'">← Back</button>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0);
+controls.update();
 
 <script>
   const scene = new THREE.Scene();
@@ -65,10 +69,12 @@
   cube.position.y = 12.5;
   scene.add(cube);
 
-  function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
-  }
+ function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
   animate();
 </script>
 
