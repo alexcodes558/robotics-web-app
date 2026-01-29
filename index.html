@@ -1,89 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <title>Robotics Learning App</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f3f4f6;
-}
-header {
-  background: #2563eb;
-  color: white;
-  padding: 16px;
-}
-nav button {
-  margin-right: 10px;
-  padding: 8px 12px;
-  border: none;
-  background: white;
-  color: #2563eb;
-  font-weight: bold;
-  cursor: pointer;
-  border-radius: 6px;
-}
-main { padding: 20px; }
-.card {
-  background: white;
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-}
+body { margin:0; font-family: Arial, sans-serif; background:#f3f4f6; }
+header { background:#2563eb; color:white; padding:16px; }
+nav button { margin-right:10px; padding:8px 12px; border:none; background:white; color:#2563eb; font-weight:bold; cursor:pointer; border-radius:6px; }
+main { padding:20px; }
+.card { background:white; padding:16px; border-radius:8px; margin-bottom:16px; }
 
 /* Robot Styles */
-.robot-container {
-  position: relative;
-  height: 150px;
-  margin-top: 20px;
-  border: 1px dashed #ccc;
-  overflow: hidden;
-}
-.robot {
-  width: 60px;
-  height: 60px;
-  background: #f97316;
-  border-radius: 10px;
-  position: absolute;
-  left: 0;
-  top: 40px;
-  transition: left 0.2s;
-}
-.eye {
-  width: 8px;
-  height: 8px;
-  background: black;
-  border-radius: 50%;
-  position: absolute;
-  top: 15px;
-}
-.eye.left { left: 15px; }
-.eye.right { right: 15px; }
+.robot-container { position:relative; height:150px; margin-top:20px; border:1px dashed #ccc; overflow:hidden; }
+.robot { width:60px; height:60px; background:#f97316; border-radius:10px; position:absolute; left:0; top:40px; transition:left 0.2s; }
+.eye { width:8px; height:8px; background:black; border-radius:50%; position:absolute; top:15px; }
+.eye.left { left:15px; }
+.eye.right { right:15px; }
 
 /* Obstacles */
-.obstacle {
-  width: 40px;
-  height: 40px;
-  background: #10b981;
-  position: absolute;
-  top: 50px;
-  border-radius: 5px;
-  cursor: grab;
-}
+.obstacle { width:40px; height:40px; background:#10b981; position:absolute; top:50px; border-radius:5px; cursor:grab; }
 </style>
 </head>
-
 <body>
+
 <header>
-  <h2>Robotics Learning App</h2>
-  <nav>
-    <button onclick="showPage('home')">Home</button>
-    <button onclick="showPage('learn')">Learn</button>
-    <button onclick="showPage('simulator')">Simulator</button>
-  </nav>
+<h2>Robotics Learning App</h2>
+<nav>
+<button onclick="showPage('home')">Home</button>
+<button onclick="showPage('learn')">Learn</button>
+<button onclick="showPage('simulator')">Simulator</button>
+<button onclick="window.location.href='cad.html'">Open 3D CAD</button>
+</nav>
 </header>
 
 <main id="content"></main>
@@ -95,35 +43,40 @@ const content = document.getElementById("content");
 function saveProgress(key, value) { localStorage.setItem(key, value); }
 function getProgress(key) { return localStorage.getItem(key); }
 
-// Navigation Pages
-function showPage(page) {
+// Show pages
+function showPage(page){
   if(page==='home'){
-    const completed = getProgress("lesson1")==="done";
-    content.innerHTML=`<div class="card"><h2>Welcome 👋</h2><p>Learn robotics step by step.</p>
+    const completed=getProgress("lesson1")==="done";
+    content.innerHTML=`<div class="card"><h2>Welcome 👋</h2>
+    <p>Learn robotics step by step.</p>
     <p><strong>Lesson 1:</strong> ${completed?"✅ Completed":"❌ Not completed"}</p></div>`;
   }
   if(page==='learn'){
-    content.innerHTML=`<div class="card"><h2>Lesson 1: What is a Robot?</h2>
+    content.innerHTML=`<div class="card">
+    <h2>Lesson 1: What is a Robot?</h2>
     <p>A robot is a machine that can:</p>
-    <ul><li>Sense the world</li><li>Make decisions</li><li>Move using motors</li></ul>
+    <ul>
+      <li>Sense the world</li>
+      <li>Make decisions</li>
+      <li>Move using motors</li>
+    </ul>
     <button onclick="showQuiz()">Take Quiz</button></div>`;
   }
   if(page==='simulator'){
-    content.innerHTML=`
-      <div class="card">
-        <h2>Robot Simulator 🤖</h2>
-        <p>The robot avoids obstacles automatically! Drag obstacles around.</p>
-        <div class="robot-container" id="robot-container">
-          <div id="robot" class="robot">
-            <div class="eye left"></div>
-            <div class="eye right"></div>
-          </div>
+    content.innerHTML=`<div class="card">
+      <h2>Robot Simulator 🤖</h2>
+      <p>The robot avoids obstacles automatically! Drag obstacles around.</p>
+      <div class="robot-container" id="robot-container">
+        <div id="robot" class="robot">
+          <div class="eye left"></div>
+          <div class="eye right"></div>
         </div>
-        <br>
-        <button onclick="moveRobot('left')">⬅️ Left</button>
-        <button onclick="moveRobot('right')">➡️ Right</button>
-        <button onclick="moveRobot('stop')">⏹ Stop</button>
-      </div>`;
+      </div>
+      <br>
+      <button onclick="moveRobot('left')">⬅️ Left</button>
+      <button onclick="moveRobot('right')">➡️ Right</button>
+      <button onclick="moveRobot('stop')">⏹ Stop</button>
+    </div>`;
 
     const container=document.getElementById("robot-container");
     const obsPositions=[50,150,250];
@@ -141,21 +94,25 @@ function showPage(page) {
 
 // Quiz
 function showQuiz(){
-  content.innerHTML=`<div class="card"><h2>Quiz: What is a Robot?</h2>
-  <p>Which one is a robot?</p>
-  <button onclick="checkAnswer(false)">A rock</button><br><br>
-  <button onclick="checkAnswer(true)">A machine with sensors and motors</button><br><br>
-  <button onclick="checkAnswer(false)">A book</button></div>`;
+  content.innerHTML=`<div class="card">
+    <h2>Quiz: What is a Robot?</h2>
+    <p>Which one is a robot?</p>
+    <button onclick="checkAnswer(false)">A rock</button><br><br>
+    <button onclick="checkAnswer(true)">A machine with sensors and motors</button><br><br>
+    <button onclick="checkAnswer(false)">A book</button>
+  </div>`;
 }
 
 function checkAnswer(correct){
   if(correct){
     saveProgress("lesson1","done");
-    content.innerHTML=`<div class="card"><h2>✅ Correct!</h2>
-      <p>You completed Lesson 1.</p><button onclick="showPage('home')">Go Home</button></div>`;
-  }else{ alert("❌ Try again!"); }
+    content.innerHTML=`<div class="card">
+      <h2>✅ Correct!</h2>
+      <p>You completed Lesson 1.</p>
+      <button onclick="showPage('home')">Go Home</button>
+    </div>`;
+  } else { alert("❌ Try again!"); }
 }
-<button onclick="window.location.href='cad.html'">Open 3D CAD</button>
 
 // Robot movement & sensor
 let position=0; let moving; let autoDirection="right";
