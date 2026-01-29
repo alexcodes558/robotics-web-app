@@ -1,16 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Robotics CAD</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            padding: 8px 12px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<button onclick="window.history.back()">Back</button>
+
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js';
 
+// --- Scene and Camera ---
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 100);
-camera.position.set(3, 3, 5);
+camera.position.set(5, 5, 5);
 camera.lookAt(0, 0, 0);
 
+// --- Renderer ---
 const renderer = new THREE.WebGLRenderer({antialias: true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Build plate
+// --- Build plate ---
 const plate = new THREE.Mesh(
     new THREE.PlaneGeometry(10, 10),
     new THREE.MeshBasicMaterial({color: 0x808080, side: THREE.DoubleSide})
@@ -18,17 +42,104 @@ const plate = new THREE.Mesh(
 plate.rotation.x = -Math.PI/2;
 scene.add(plate);
 
-// Cube
-const cube = new THREE.Mesh(
-    new THREE.BoxGeometry(1,1,1),
-    new THREE.MeshBasicMaterial({color: 0xffa500})
-);
-cube.position.y = 0.5;
-scene.add(cube);
+// --- Robot parts container ---
+const parts = [];
 
+// --- Function to create a new part ---
+function createPart(color=0xffa500, position={x:0, y:0.5, z:0}) {
+    const cube = new THREE.Mesh(
+        new THREE.BoxGeometry(1,1,1),
+        new THREE.MeshBasicMaterial({color: color})
+    );
+    cube.position.set(position.x, position.y, position.z);
+    scene.add(cube);
+    parts.push(cube);
+}
+
+// --- Add multiple parts ---
+createPart(0xffa500, {x:0, y:0.5, z:0});   // orange cube
+createPart(0x0000ff, {x:2, y:0.5, z:0});   // blue cube
+createPart(0xff0000, {x:-2, y:0.5, z:0});  // red cube
+
+// --- Raycaster for selection ---
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let selected = null;
+let isDragging = false;
+
+// --- Helper: snap to nearest half-unit (0.5) ---
+function snapToGrid(value) {
+    return Math.round(value * 2) / 2; // rounds to nearest 0.5
+}
+
+function getMouseOnPlane(event, planeY = 0) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+
+    const plane = new THREE.Plane(new THREE.Vector3(0,1,0), -planeY);
+    const point = new THREE.Vector3();
+    raycaster.ray.intersectPlane(plane, point);
+    return point;
+}
+
+function onMouseDown(event) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObjects(parts);
+    if (intersects.length > 0) {
+        selected = intersects[0].object;
+        selected.material.color.set(0x00ff00); // selected → green
+        isDragging = true;
+    } else {
+        if (selected) resetColor(selected);
+        selected = null;
+    }
+}
+
+function onMouseMove(event) {
+    if (!isDragging || !selected) return;
+    const point = getMouseOnPlane(event, 0.5);
+    selected.position.x = point.x;
+    selected.position.z = point.z;
+}
+
+function onMouseUp(event) {
+    if (selected) {
+        // Snap to nearest 0.5
+        selected.position.x = snapToGrid(selected.position.x);
+        selected.position.z = snapToGrid(selected.position.z);
+        resetColor(selected);
+    }
+    isDragging = false;
+}
+
+function resetColor(part) {
+    if (part === parts[0]) part.material.color.set(0xffa500);
+    else if (part === parts[1]) part.material.color.set(0x0000ff);
+    else if (part === parts[2]) part.material.color.set(0xff0000);
+}
+
+window.addEventListener('mousedown', onMouseDown, false);
+window.addEventListener('mousemove', onMouseMove, false);
+window.addEventListener('mouseup', onMouseUp, false);
+
+// --- Animate ---
 function animate() {
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
 }
 animate();
+
+// --- Handle resize ---
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
 </script>
+
+</body>
+</html>
