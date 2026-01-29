@@ -2,21 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Robotics CAD — Grid</title>
+<title>Robotics CAD — Grid & Camera</title>
 <style>
-    body { margin: 0; overflow: hidden; }
-    canvas { display: block; }
-    button {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 10;
-        padding: 8px 12px;
-        font-size: 16px;
-    }
-    #addPartBtn {
-        top: 50px;
-    }
+body { margin:0; overflow:hidden; }
+canvas { display:block; }
+button {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    padding: 8px 12px;
+    font-size: 16px;
+}
+#addPartBtn { top:50px; }
 </style>
 </head>
 <body>
@@ -32,57 +30,61 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xe0e0e0);
 
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 100);
-camera.position.set(10, 10, 10);
-camera.lookAt(0, 0, 0);
+let cameraTarget = new THREE.Vector3(0,0,0);
+let cameraRadius = 15;
+let cameraAngleX = Math.PI/4; // horizontal rotation
+let cameraAngleY = Math.PI/6; // vertical rotation
+updateCamera();
+
+function updateCamera() {
+    camera.position.x = cameraTarget.x + cameraRadius * Math.cos(cameraAngleY) * Math.sin(cameraAngleX);
+    camera.position.y = cameraTarget.y + cameraRadius * Math.sin(cameraAngleY);
+    camera.position.z = cameraTarget.z + cameraRadius * Math.cos(cameraAngleY) * Math.cos(cameraAngleX);
+    camera.lookAt(cameraTarget);
+}
 
 // --- Renderer ---
-const renderer = new THREE.WebGLRenderer({antialias: true});
+const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
 // --- Lights ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+const ambientLight = new THREE.AmbientLight(0xffffff,0.6);
 scene.add(ambientLight);
-
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-directionalLight.position.set(10, 20, 10);
+const directionalLight = new THREE.DirectionalLight(0xffffff,0.6);
+directionalLight.position.set(10,20,10);
 directionalLight.castShadow = true;
 scene.add(directionalLight);
 
-// --- Grid helper for the build plate ---
-const gridHelper = new THREE.GridHelper(20, 40, 0x888888, 0xcccccc);
+// --- Grid & Plate ---
+const gridHelper = new THREE.GridHelper(20,40,0x888888,0xcccccc);
 scene.add(gridHelper);
 
-// --- Build plate ---
 const plate = new THREE.Mesh(
-    new THREE.PlaneGeometry(20, 20),
-    new THREE.MeshStandardMaterial({color: 0xaaaaaa, side: THREE.DoubleSide})
+    new THREE.PlaneGeometry(20,20),
+    new THREE.MeshStandardMaterial({color:0xaaaaaa, side:THREE.DoubleSide})
 );
 plate.rotation.x = -Math.PI/2;
 plate.receiveShadow = true;
 scene.add(plate);
 
-// --- Robot parts container ---
+// --- Robot parts ---
 const parts = [];
-
-// --- Function to create a part ---
-function createPart(color=0xffa500, position={x:0, y:0.5, z:0}) {
+function createPart(color=0xffa500, position={x:0,y:0.5,z:0}){
     const cube = new THREE.Mesh(
         new THREE.BoxGeometry(1,1,1),
-        new THREE.MeshStandardMaterial({color: color})
+        new THREE.MeshStandardMaterial({color})
     );
-    cube.position.set(position.x, position.y, position.z);
+    cube.position.set(position.x,position.y,position.z);
     cube.castShadow = true;
     cube.receiveShadow = true;
     scene.add(cube);
     parts.push(cube);
 }
-
-// --- Initial parts ---
-createPart(0xffa500, {x:0, y:0.5, z:0});
-createPart(0x0000ff, {x:2, y:0.5, z:0});
-createPart(0xff0000, {x:-2, y:0.5, z:0});
+createPart(0xffa500,{x:0,y:0.5,z:0});
+createPart(0x0000ff,{x:2,y:0.5,z:0});
+createPart(0xff0000,{x:-2,y:0.5,z:0});
 
 // --- Raycaster & dragging ---
 const raycaster = new THREE.Raycaster();
@@ -90,100 +92,123 @@ const mouse = new THREE.Vector2();
 let selected = null;
 let isDragging = false;
 
-// --- Snap to grid (1 unit per cell) ---
-function snapToGrid(value) { return Math.round(value); }
-
-function getMouseOnPlane(event, planeY=0.5) {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
-    const plane = new THREE.Plane(new THREE.Vector3(0,1,0), -planeY);
+// --- Snap to grid ---
+function snapToGrid(value){ return Math.round(value); }
+function getMouseOnPlane(event, planeY=0.5){
+    mouse.x = (event.clientX / window.innerWidth)*2-1;
+    mouse.y = -(event.clientY/window.innerHeight)*2+1;
+    raycaster.setFromCamera(mouse,camera);
+    const plane = new THREE.Plane(new THREE.Vector3(0,1,0),-planeY);
     const point = new THREE.Vector3();
-    raycaster.ray.intersectPlane(plane, point);
+    raycaster.ray.intersectPlane(plane,point);
     return point;
 }
 
-// --- Mouse Events ---
-function onMouseDown(event) {
-    raycaster.setFromCamera(mouse, camera);
+// --- Mouse events for dragging ---
+function onMouseDown(e){
+    raycaster.setFromCamera(mouse,camera);
     const intersects = raycaster.intersectObjects(parts);
-    if (intersects.length > 0) {
+    if(intersects.length>0){
         selected = intersects[0].object;
         selected.material.color.set(0x00ff00);
         isDragging = true;
     } else {
-        if (selected) resetColor(selected);
+        if(selected) resetColor(selected);
         selected = null;
     }
 }
-
-function onMouseMove(event) {
-    if (!isDragging || !selected) return;
-    const point = getMouseOnPlane(event, selected.position.y);
-    selected.position.x = point.x;
-    selected.position.z = point.z;
+function onMouseMove(e){
+    if(isDragging && selected){
+        const point = getMouseOnPlane(e,selected.position.y);
+        selected.position.x = point.x;
+        selected.position.z = point.z;
+    }
 }
-
-function onMouseUp(event) {
-    if (selected) {
+function onMouseUp(e){
+    if(selected){
         selected.position.x = snapToGrid(selected.position.x);
         selected.position.z = snapToGrid(selected.position.z);
         resetColor(selected);
     }
     isDragging = false;
 }
-
-function resetColor(part) {
-    if (part === parts[0]) part.material.color.set(0xffa500);
-    else if (part === parts[1]) part.material.color.set(0x0000ff);
-    else if (part === parts[2]) part.material.color.set(0xff0000);
+function resetColor(part){
+    if(part===parts[0]) part.material.color.set(0xffa500);
+    else if(part===parts[1]) part.material.color.set(0x0000ff);
+    else if(part===parts[2]) part.material.color.set(0xff0000);
     else part.material.color.set(0xffa500);
 }
 
-// --- Keyboard Events ---
-// Rotate & scale selected
-window.addEventListener('keydown', (e) => {
-    if (!selected) return;
-    switch(e.key.toLowerCase()) {
-        case 'q': selected.rotation.y += Math.PI/16; break;
-        case 'e': selected.rotation.y -= Math.PI/16; break;
-        case 'z': selected.scale.multiplyScalar(0.9); break;
-        case 'x': selected.scale.multiplyScalar(1.1); break;
-        // Camera movement
-        case 'w': camera.position.z -= 0.5; break;
-        case 's': camera.position.z += 0.5; break;
-        case 'a': camera.position.x -= 0.5; break;
-        case 'd': camera.position.x += 0.5; break;
-        case 'r': camera.position.y += 0.5; break;
-        case 'f': camera.position.y -= 0.5; break;
+// --- Keyboard rotate/scale ---
+window.addEventListener('keydown',(e)=>{
+    if(selected){
+        switch(e.key.toLowerCase()){
+            case'q': selected.rotation.y+=Math.PI/16; break;
+            case'e': selected.rotation.y-=Math.PI/16; break;
+            case'z': selected.scale.multiplyScalar(0.9); break;
+            case'x': selected.scale.multiplyScalar(1.1); break;
+        }
     }
-    camera.lookAt(0,0,0);
 });
 
 // --- Add new part button ---
-document.getElementById('addPartBtn').addEventListener('click', () => {
-    createPart(0xffa500, {x:0, y:parts.length*1+0.5, z:0});
+document.getElementById('addPartBtn').addEventListener('click',()=>{
+    createPart(0xffa500,{x:0,y:parts.length*1+0.5,z:0});
 });
 
 // --- Event listeners ---
-window.addEventListener('mousedown', (e)=>{mouse.x=(e.clientX/window.innerWidth)*2-1; mouse.y=-(e.clientY/window.innerHeight)*2+1; onMouseDown(e);});
-window.addEventListener('mousemove', onMouseMove);
-window.addEventListener('mouseup', onMouseUp);
+window.addEventListener('mousedown',e=>{
+    if(e.button===0){ // left click for selection
+        mouse.x = (e.clientX/window.innerWidth)*2-1;
+        mouse.y = -(e.clientY/window.innerHeight)*2+1;
+        onMouseDown(e);
+    }
+});
+window.addEventListener('mousemove',onMouseMove);
+window.addEventListener('mouseup',onMouseUp);
+
+// --- Custom camera controls ---
+let isRightMouseDown = false;
+let lastMouse = {x:0,y:0};
+window.addEventListener('contextmenu',e=>e.preventDefault());
+window.addEventListener('mousedown',e=>{
+    if(e.button===2) isRightMouseDown=true;
+    lastMouse.x=e.clientX;
+    lastMouse.y=e.clientY;
+});
+window.addEventListener('mouseup',e=>{
+    if(e.button===2) isRightMouseDown=false;
+});
+window.addEventListener('mousemove',e=>{
+    if(isRightMouseDown){
+        const dx = (e.clientX-lastMouse.x)/200;
+        const dy = (e.clientY-lastMouse.y)/200;
+        cameraAngleX -= dx;
+        cameraAngleY -= dy;
+        cameraAngleY = Math.min(Math.max(0.1, cameraAngleY), Math.PI/2-0.1);
+        updateCamera();
+        lastMouse.x = e.clientX;
+        lastMouse.y = e.clientY;
+    }
+});
+window.addEventListener('wheel',e=>{
+    cameraRadius += e.deltaY*0.01;
+    cameraRadius = Math.max(5,Math.min(30,cameraRadius));
+    updateCamera();
+});
 
 // --- Animate ---
-function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
-}
+function animate(){requestAnimationFrame(animate); renderer.render(scene,camera);}
 animate();
 
 // --- Resize ---
-window.addEventListener('resize', ()=>{
+window.addEventListener('resize',()=>{
     camera.aspect = window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(window.innerWidth,window.innerHeight);
 });
 </script>
 
 </body>
 </html>
+
