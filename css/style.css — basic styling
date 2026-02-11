@@ -1,6 +1,0 @@
-body { margin:0; font-family: Arial, sans-serif; background:#f0f0f0; }
-.center { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center; }
-.button { padding:10px 20px; background:#333; color:#fff; text-decoration:none; border-radius:4px; font-size:16px; }
-.button:hover { background:#555; }
-
-/* Toolbar, side panels, info panel (for cad.html) will go here later */
