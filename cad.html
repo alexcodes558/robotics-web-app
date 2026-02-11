@@ -1,26 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Pro Robotics CAD Workspace</title>
-<link rel="stylesheet" href="css/style.css">
+<title>Onshape Clone</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Toolbar -->
-  <div id="toolbar"></div>
 
-  <!-- Left sidebar / part library -->
-  <div id="sidebar"></div>
+<div id="topbar">
+  <button onclick="enterSketch()">Sketch</button>
+  <button onclick="extrude()">Extrude</button>
+  <button onclick="moveMode()">Move</button>
+  <button onclick="rotateMode()">Rotate</button>
+  <button onclick="save()">Save</button>
+  <button onclick="load()">Load</button>
+</div>
 
-  <!-- Right sidebar / part properties -->
-  <div id="properties"></div>
+<div id="leftPanel">Features</div>
+<div id="rightPanel">Properties</div>
+<div id="historyPanel">History</div>
 
-  <!-- Bottom history / timeline -->
-  <div id="history"></div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
 
-  <!-- Info overlay -->
-  <div id="info"></div>
+<script src="engine.js"></script>
+<script src="ui.js"></script>
 
-  <script type="module" src="js/main.js"></script>
 </body>
 </html>
