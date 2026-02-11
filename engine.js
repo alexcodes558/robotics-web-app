@@ -19,11 +19,8 @@ camera.position.set(5,5,5);
 
 renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
-document.getElementById("app").appendChild(renderer.domElement);
-
-controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-
+document.getElementById("app").appendChild(renderer.domElement)
+  
 scene.add(new THREE.GridHelper(50,50));
 scene.add(new THREE.AmbientLight(0xffffff,0.6));
 
@@ -45,7 +42,6 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 
 function animate(){
 requestAnimationFrame(animate);
-controls.update();
 renderer.render(scene,camera);
 }
 
